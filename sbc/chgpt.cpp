@@ -6,6 +6,7 @@
 #include <string.h>
 #include <cstdint>
 #include <cstring>
+#include <chrono>
 
 using boost::asio::ip::udp;
 
@@ -18,7 +19,7 @@ std::string thisip = "";
 std::string targetip = "";
 int port_no = 0;
 int loop_speed = 100;
-
+bool bEnd = false;
 
 struct data_frame
 {
@@ -39,6 +40,7 @@ data_frame data1;
 char* uint8_tToCharArray(uint8_t* uintArray, size_t size);
 uint8_t* charArrayToUint8_t(char* charArray, size_t size);
 uint8_t* dataFrameToUint8_tArray(data_frame* df, size_t size);
+void mainloop();
 
 void send_thread_func()
 {
@@ -75,13 +77,17 @@ void send_thread_func()
         // send broadcast message in a loop
         while (true)
         {
+            if(bEnd)
+            {
+                break;
+            }
             socket.send_to(boost::asio::buffer(send_buffer), broadcast_endpoint);
             socket.send_to(boost::asio::buffer(send_buffer2), broadcast_endpoint);
             std::this_thread::sleep_for(std::chrono::milliseconds(lp)); // wait for 1 second before sending next message
-
+            
             // add message to shared data structure
             std::lock_guard<std::mutex> lock(mutex);
-            messages.push_back(message);
+            //messages.push_back(message2);
         }
     }
     catch (std::exception& e)
@@ -100,7 +106,7 @@ void receive_thread_func()
         udp::socket receive_socket(io_context, udp::endpoint(udp::v4(), (unsigned short)port_no));
 
         // create buffer to receive data
-        std::array<char, 12> receive_buffer;
+        std::array<char, 9> receive_buffer;
         udp::endpoint sender_endpoint;
 
         // receive broadcast message in a loop
@@ -111,13 +117,16 @@ void receive_thread_func()
             std::string str = std::string(receive_buffer.data(), receive_buffer.size());
             if(str.substr(0, receive_buffer.size()) != "Hp  Pavilion" || str.substr(0, receive_buffer.size()) != "Hp  Pavilion")
             {
-                std::cout << "Received message: " << std::string(receive_buffer.data(), receive_buffer.size()) << std::endl;
-                std::cout << "Size: " << receive_buffer.size() << std::endl;
+                //std::cout << "Received message: " << std::string(receive_buffer.data(), receive_buffer.size()) << std::endl;
+                //std::cout << "Size: " << receive_buffer.size() << std::endl;
             }else
             {
                 
             }
-            
+            if(bEnd)
+            {
+                break;
+            }
 
             // add message to shared data structure
             std::lock_guard<std::mutex> lock(mutex);
@@ -184,18 +193,18 @@ int main(int argc, char* argv[])
     // create threads for sending and receiving broadcasts
     std::thread send_thread(send_thread_func);
     std::thread receive_thread(receive_thread_func);
-
+    std::thread mnloop(mainloop);
     // wait for threads to finish
     send_thread.join();
     receive_thread.join();
-
+    mnloop.join();
     // print all messages in shared data structure
-    std::lock_guard<std::mutex> lock(mutex);
-    std::cout << "All messages:" << std::endl;
-    for (const auto& message : messages)
-    {
-        std::cout << message << std::endl;
-    }
+    //std::lock_guard<std::mutex> lock(mutex);
+    //std::cout << "All messages:" << std::endl;
+    //for (const auto& message : messages)
+    //{
+      //  std::cout << message << std::endl;
+   // }
 
     return 0;
 }
@@ -231,3 +240,301 @@ uint8_t *dataFrameToUint8_tArray(data_frame *df, size_t size)
     //std::memcpy(uintArray, df, size);
     return uintArray;
 }
+
+void mainloop()
+{
+    
+
+    // Command line loop to modify the data array
+    while (true)
+    {
+        std::string command;
+        std::cout << ">> ";
+        std::cin >> command;
+        //std::cout << command << std::endl;
+        if (command == "quit" || command == "q" || command == "e")
+        {
+            //std::cout << "quit " << std::endl;
+            bEnd = true;
+            break;
+        }
+        else if (command == "set")
+        {
+            uint8_t value;
+            std::string sValue = "";
+
+            uint8_t index;
+            std::string sNewValue = "";
+            uint8_t newValue;
+
+            std::cout << "data1 or data2? >>";
+            std::cin >> index;
+            std::cout << "What byte 0 - 7? >>";
+            std::cin >> sValue;
+            value = stoi(sValue);
+            std::cout << "new value 0 - 255? >>";
+            std::cin >> sNewValue;
+            value = stoi(sNewValue);
+
+            if(index == 1 && newValue >=0 && newValue < 256)
+            {
+               if (value == 0)
+               {
+                ddf.d0 = newValue;
+               }else if(value == 1)
+               {
+                ddf.d1 = newValue;
+               }else if(value == 2)
+               {
+                ddf.d2 = newValue;
+               }else if(value == 3)
+               {
+                ddf.d3 = newValue;
+               }else if(value == 4)
+               {
+                ddf.d4 = newValue;
+               }else if(value == 5)
+               {
+                ddf.d5 = newValue;
+               }else if(value == 6)
+               {
+                ddf.d6 = newValue;
+               }else if(value == 7)
+               {
+                ddf.d7 = newValue;
+               }else
+               {
+                std::cout << "Invalid index entry" << std::endl;
+               }
+               
+            }else if (index == 2 && newValue >=0 && newValue < 256)
+            {
+                if (value == 0)
+                {
+                    data1.d0 = newValue;
+                }else if(value == 1)
+                {
+                    data1.d1 = newValue;
+                }else if(value == 2)
+                {
+                    data1.d2 = newValue;
+                }else if(value == 3)
+                {
+                    data1.d3 = newValue;
+                }else if(value == 4)
+                {
+                    data1.d4 = newValue;
+                }else if(value == 5)
+                {
+                    data1.d5 = newValue;
+                }else if(value == 6)
+                {
+                    data1.d6 = newValue;
+                }else if(value == 7)
+                {
+                    data1.d7 = newValue;
+                }
+            }else
+            {
+                std::cout << "Invalid Datastructure Entry" << std::endl;
+                std::cout << std::dec << index << std::endl;
+                std::cout << std::dec << value << std::endl;
+                std::cout << sNewValue << std::endl;
+                std::cout << newValue << std::endl;
+            }
+            
+
+            command = "";
+          
+            //std::cout << messages[2] << std::endl;
+        }
+        else if (command == "get")
+        {
+            std::size_t index;
+            std::cout << "Enter index >>";
+            std::cin >> index;
+		/*
+            if (index < data.size())
+            {
+                std::cout << static_cast<int>(data[index]) << std::endl;
+            }
+            else
+            {
+                std::cerr << "Invalid index: " << index << std::endl;
+            }
+		*/
+            std::cout << messages[index] << std::endl;
+            command = "";
+            //std::cout << index << std::endl;
+        }
+        else
+        {
+            std::cerr << "Invalid command: " << command << std::endl;
+            command = "";
+        }
+    }
+    return;
+    // Stop the IO context and
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+#include <iostream>
+#include <thread>
+#include <chrono>
+#include <boost/asio.hpp>
+
+using boost::asio::ip::udp;
+
+// The data to be broadcasted
+std::array<uint8_t, 1024> data;
+
+// The UDP broadcast endpoint
+udp::endpoint broadcastEndpoint(boost::asio::ip::address_v4::broadcast(), 1234);
+
+// The UDP socket for sending data
+udp::socket sendSocket(boost::asio::io_context& ioContext, const udp::endpoint& localEndpoint)
+{
+    udp::socket socket(ioContext);
+    socket.open(udp::v4());
+    socket.set_option(boost::asio::socket_base::broadcast(true));
+    socket.bind(localEndpoint);
+    return socket;
+}
+
+// The UDP socket for receiving data
+udp::socket receiveSocket(boost::asio::io_context& ioContext, const udp::endpoint& localEndpoint)
+{
+    udp::socket socket(ioContext);
+    socket.open(udp::v4());
+    socket.bind(localEndpoint);
+    return socket;
+}
+
+// The send loop thread function
+void sendLoop(boost::asio::io_context& ioContext)
+{
+    udp::socket socket = sendSocket(ioContext, udp::endpoint(udp::v4(), 0));
+    while (true)
+    {
+        socket.send_to(boost::asio::buffer(data), broadcastEndpoint);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
+
+// The receive loop thread function
+void receiveLoop(boost::asio::io_context& ioContext)
+{
+    udp::socket socket = receiveSocket(ioContext, udp::endpoint(udp::v4(), 1234));
+    while (true)
+    {
+        std::array<uint8_t, 1024> buffer;
+        udp::endpoint senderEndpoint;
+        std::size_t length = socket.receive_from(boost::asio::buffer(buffer), senderEndpoint);
+        std::cout << "Received " << length << " bytes from " << senderEndpoint << std::endl;
+    }
+}
+
+int main()
+{
+    // Start the IO context and the send/receive loop threads
+    boost::asio::io_context ioContext;
+    std::thread sendThread(sendLoop, std::ref(ioContext));
+    std::thread receiveThread(receiveLoop, std::ref(ioContext));
+
+    // Command line loop to modify the data array
+    while (true)
+    {
+        std::string command;
+        std::cin >> command;
+        if (command == "quit")
+        {
+            break;
+        }
+        else if (command == "set")
+        {
+            uint8_t value;
+            std::size_t index;
+            std::cin >> index >> value;
+            if (index < data.size())
+            {
+                data[index] = value;
+            }
+            else
+            {
+                std::cerr << "Invalid index: " << index << std::endl;
+            }
+        }
+        else if (command == "get")
+        {
+            std::size_t index;
+            std::cin >> index;
+            if (index < data.size())
+            {
+                std::cout << static_cast<int>(data[index]) << std::endl;
+            }
+            else
+            {
+                std::cerr << "Invalid index: " << index << std::endl;
+            }
+        }
+        else
+        {
+            std::cerr << "Invalid command: " << command << std::endl;
+        }
+    }
+
+    // Stop the IO context and
+
+}
+*/
