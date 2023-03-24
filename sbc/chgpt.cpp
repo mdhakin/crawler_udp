@@ -56,6 +56,7 @@ void send_thread_func()
         // create endpoint for broadcasting
         udp::endpoint broadcast_endpoint(boost::asio::ip::make_address(targetip), 12345);
 
+        /*
         // create buffer to send datadata_frame ddf;
         uint8_t* ue = dataFrameToUint8_tArray(&ddf,9);
         char* chue = uint8_tToCharArray(ue,9);
@@ -72,7 +73,7 @@ void send_thread_func()
         std::string message2 = sUE2;
         std::array<char, 9> send_buffer2;
         std::copy(message2.begin(), message2.end(), send_buffer2.begin());
-
+        */
         int64_t lp = (int64_t)loop_speed;
         // send broadcast message in a loop
         while (true)
@@ -81,6 +82,25 @@ void send_thread_func()
             {
                 break;
             }
+
+
+            // create buffer to send datadata_frame ddf;
+            uint8_t* ue = dataFrameToUint8_tArray(&ddf,9);
+            char* chue = uint8_tToCharArray(ue,9);
+            std::string sUE = std::string(chue);
+            //std::string message = "sbc        i\n";
+            std::string message = sUE;
+            std::array<char, 9> send_buffer;
+            std::copy(message.begin(), message.end(), send_buffer.begin());
+
+            uint8_t* ue2 = dataFrameToUint8_tArray(&data1,9);
+            char* chue2 = uint8_tToCharArray(ue2,9);
+            std::string sUE2 = std::string(chue2);
+            //std::string message = "sbc        i\n";
+            std::string message2 = sUE2;
+            std::array<char, 9> send_buffer2;
+            std::copy(message2.begin(), message2.end(), send_buffer2.begin());
+
             socket.send_to(boost::asio::buffer(send_buffer), broadcast_endpoint);
             socket.send_to(boost::asio::buffer(send_buffer2), broadcast_endpoint);
             std::this_thread::sleep_for(std::chrono::milliseconds(lp)); // wait for 1 second before sending next message
@@ -260,21 +280,21 @@ void mainloop()
         }
         else if (command == "set")
         {
-            uint8_t value;
+            unsigned int value;
             std::string sValue = "";
 
-            uint8_t index;
+            unsigned int index;
             std::string sNewValue = "";
-            uint8_t newValue;
+            unsigned int newValue;
 
             std::cout << "data1 or data2? >>";
             std::cin >> index;
             std::cout << "What byte 0 - 7? >>";
             std::cin >> sValue;
-            value = stoi(sValue);
+            value = std::stoul(sValue);
             std::cout << "new value 0 - 255? >>";
             std::cin >> sNewValue;
-            value = stoi(sNewValue);
+            newValue = std::stoul(sNewValue);
 
             if(index == 1 && newValue >=0 && newValue < 256)
             {
@@ -304,7 +324,11 @@ void mainloop()
                 ddf.d7 = newValue;
                }else
                {
-                std::cout << "Invalid index entry" << std::endl;
+                std::cout << "Invalid bit entry" << std::endl;
+                std::cout << std::dec << index << std::endl;
+                std::cout << std::dec << value << std::endl;
+                std::cout << sNewValue << std::endl;
+                std::cout << newValue << std::endl;
                }
                
             }else if (index == 2 && newValue >=0 && newValue < 256)
@@ -418,7 +442,138 @@ void mainloop()
 
 
 
+/*
 
+C Sharp Console App
+
+using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+
+class Program
+{
+    byte[] data1 = { 255, 255, 255, 255, 255, 255, 255, 255, 255 };
+    byte[] data2 = { 255, 255, 255, 255, 255, 255, 255, 255, 255 };
+
+    static UdpClient udpClient;
+    static TcpListener tcpListener;
+    //ipString ipstring = new ipString();
+    //static string ipAdder = "192.168.1.";
+
+    static void Main(string[] args)
+    {
+        
+        
+
+        // Start the UDP sender thread
+        Thread udpThread = new Thread(new ThreadStart(SendUdpPackets));
+        udpThread.Start();
+
+        Thread udpThread2 = new Thread(new ThreadStart(ReceiveUdpPackets));
+        udpThread2.Start();
+
+        // Start the TCP listener thread
+        //Thread tcpThread = new Thread(new ThreadStart(ListenForTcpConnections));
+        //tcpThread.Start();
+    }
+
+    static void SendUdpPackets()
+    {
+        udpClient = new UdpClient();
+        
+
+        while (true)
+        {
+            // Send UDP packets
+            byte[] cPacketData = { getu8RandomNumber(), getu8RandomNumber(), getu8RandomNumber(), getu8RandomNumber(), getu8RandomNumber(), getu8RandomNumber(), getu8RandomNumber(), getu8RandomNumber(), getu8RandomNumber() };
+            byte[] packetData = Encoding.ASCII.GetBytes("Windows l");
+            udpClient.Send(cPacketData, cPacketData.Length, new IPEndPoint(IPAddress.Parse("192.168.1.8"), 1234));
+            //Console.WriteLine("Sent Windows   1");
+            // udpClient.Send(packetData, packetData.Length, new IPEndPoint(IPAddress.Broadcast, 1234));
+            Thread.Sleep(100);
+        }
+    }
+
+    static void ListenForTcpConnections()
+    {
+        tcpListener = new TcpListener(IPAddress.Any, 1234);
+        tcpListener.Start();
+
+        while (true)
+        {
+            // Wait for a TCP client to connect
+            TcpClient client = tcpListener.AcceptTcpClient();
+            NetworkStream stream = client.GetStream();
+
+            // Receive messages from the client
+            byte[] buffer = new byte[1024];
+            int bytesRead = stream.Read(buffer, 0, buffer.Length);
+            string message = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+            Console.WriteLine("Received message from TCP client: " + message);
+
+            // Send a response back to the client
+            byte[] response = Encoding.ASCII.GetBytes("Message received!");
+            stream.Write(response, 0, response.Length);
+
+            client.Close();
+        }
+    }
+
+    static void ReceiveUdpPackets()
+    {
+        // Set up a UDP socket to listen for packets on port 1234
+        UdpClient udpClient = new UdpClient(12345);
+        int oneOrtwo = 1;
+        while (true)
+        {
+            // Receive a UDP packet and print its contents
+            IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, 0);
+            byte[] data = udpClient.Receive(ref endPoint);
+            //Console.WriteLine($"Received packet from {endPoint}: {BitConverter.ToString(data)}");
+            if (oneOrtwo == 1)
+            {
+                oneOrtwo++;
+                Console.Clear();
+            }
+            else
+            {
+                
+                oneOrtwo = 1;
+            }
+            
+            Console.WriteLine("ID:" + data[0].ToString() + " Data:" + data[1].ToString() + " " + " " + data[2].ToString() + " " + data[3].ToString() + " " + data[4].ToString() + " " + data[5].ToString() + " " + data[6].ToString() + " " + data[7].ToString() + " " + data[8].ToString());
+        }
+    }
+
+    static byte getu8RandomNumber()
+    {
+        // Create a new Random object
+        Random rand = new Random();
+
+        // Generate a random integer between 1 and 100
+        int randomInt = rand.Next(1, 120);
+        
+        return (byte)randomInt;
+    }
+
+    public class ipString
+    {
+        public string ipAdder = "192.168.1.";
+        public string stIP()
+        {
+            Console.WriteLine("Enter IP end");
+            string ii = ipAdder + Console.ReadLine();
+            ipAdder = ii;
+            return ii;
+        }
+    }
+
+}
+
+
+*/
 
 
 
