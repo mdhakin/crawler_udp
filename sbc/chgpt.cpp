@@ -12,6 +12,7 @@ using boost::asio::ip::udp;
 
 
 std::mutex mutex;
+
 std::vector<std::string> messages; // shared data structure
 
 std::string name = "";
@@ -34,8 +35,14 @@ struct data_frame
     uint8_t d7 = 255;
 };
 
-data_frame ddf;
+data_frame data0;
 data_frame data1;
+data_frame data2;
+
+std::mutex data_mutex;
+data_frame Rdata0;
+data_frame Rdata1;
+data_frame Rdata2;
 
 char* uint8_tToCharArray(uint8_t* uintArray, size_t size);
 uint8_t* charArrayToUint8_t(char* charArray, size_t size);
@@ -56,27 +63,10 @@ void send_thread_func()
         // create endpoint for broadcasting
         udp::endpoint broadcast_endpoint(boost::asio::ip::make_address(targetip), 12345);
 
-        /*
-        // create buffer to send datadata_frame ddf;
-        uint8_t* ue = dataFrameToUint8_tArray(&ddf,9);
-        char* chue = uint8_tToCharArray(ue,9);
-        std::string sUE = std::string(chue);
-        //std::string message = "sbc        i\n";
-        std::string message = sUE;
-        std::array<char, 9> send_buffer;
-        std::copy(message.begin(), message.end(), send_buffer.begin());
-
-        uint8_t* ue2 = dataFrameToUint8_tArray(&data1,9);
-        char* chue2 = uint8_tToCharArray(ue2,9);
-        std::string sUE2 = std::string(chue2);
-        //std::string message = "sbc        i\n";
-        std::string message2 = sUE2;
-        std::array<char, 9> send_buffer2;
-        std::copy(message2.begin(), message2.end(), send_buffer2.begin());
-        */
+        
         int64_t lp = (int64_t)loop_speed;
         // send broadcast message in a loop
-        while (true)
+        while (!bEnd)
         {
             if(bEnd)
             {
@@ -84,11 +74,11 @@ void send_thread_func()
             }
 
 
-            // create buffer to send datadata_frame ddf;
-            uint8_t* ue = dataFrameToUint8_tArray(&ddf,9);
+            // create buffer to send datadata_frame data0;
+            uint8_t* ue = dataFrameToUint8_tArray(&data0,9);
             char* chue = uint8_tToCharArray(ue,9);
             std::string sUE = std::string(chue);
-            //std::string message = "sbc        i\n";
+           
             std::string message = sUE;
             std::array<char, 9> send_buffer;
             std::copy(message.begin(), message.end(), send_buffer.begin());
@@ -96,13 +86,22 @@ void send_thread_func()
             uint8_t* ue2 = dataFrameToUint8_tArray(&data1,9);
             char* chue2 = uint8_tToCharArray(ue2,9);
             std::string sUE2 = std::string(chue2);
-            //std::string message = "sbc        i\n";
+            
             std::string message2 = sUE2;
             std::array<char, 9> send_buffer2;
             std::copy(message2.begin(), message2.end(), send_buffer2.begin());
 
+            uint8_t* ue3 = dataFrameToUint8_tArray(&data2,9);
+            char* chue3 = uint8_tToCharArray(ue3,9);
+            std::string sUE3 = std::string(chue3);
+            
+            std::string message3 = sUE3;
+            std::array<char, 9> send_buffer3;
+            std::copy(message3.begin(), message3.end(), send_buffer3.begin());
+
             socket.send_to(boost::asio::buffer(send_buffer), broadcast_endpoint);
             socket.send_to(boost::asio::buffer(send_buffer2), broadcast_endpoint);
+            socket.send_to(boost::asio::buffer(send_buffer3), broadcast_endpoint);
             std::this_thread::sleep_for(std::chrono::milliseconds(lp)); // wait for 1 second before sending next message
             
             // add message to shared data structure
@@ -118,6 +117,11 @@ void send_thread_func()
 
 void receive_thread_func()
 {
+    if(bEnd)
+    {
+        return;
+    }
+
     try
     {
         boost::asio::io_context io_context;
@@ -130,27 +134,64 @@ void receive_thread_func()
         udp::endpoint sender_endpoint;
 
         // receive broadcast message in a loop
-        while (true)
+        while (!bEnd)
         {
+            if(bEnd)
+            {
+                return;
+            }
             receive_socket.receive_from(boost::asio::buffer(receive_buffer), sender_endpoint);
             // print received message
             std::string str = std::string(receive_buffer.data(), receive_buffer.size());
-            if(str.substr(0, receive_buffer.size()) != "Hp  Pavilion" || str.substr(0, receive_buffer.size()) != "Hp  Pavilion")
+            
+            data_mutex.lock();
+            int mID = (int)receive_buffer.data()[0];
+            //std::cout << mID << std::endl;
+            if (mID == 201)
             {
-                //std::cout << "Received message: " << std::string(receive_buffer.data(), receive_buffer.size()) << std::endl;
-                //std::cout << "Size: " << receive_buffer.size() << std::endl;
-            }else
+                Rdata0.id = (int)receive_buffer.data()[0];
+                Rdata0.d0 = (int)receive_buffer.data()[1];
+                Rdata0.d1 = (int)receive_buffer.data()[2];
+                Rdata0.d2 = (int)receive_buffer.data()[3];
+                Rdata0.d3 = (int)receive_buffer.data()[4];
+                Rdata0.d4 = (int)receive_buffer.data()[5];
+                Rdata0.d5 = (int)receive_buffer.data()[6];
+                Rdata0.d6 = (int)receive_buffer.data()[7];
+                Rdata0.d7 = (int)receive_buffer.data()[8];
+            }else if (mID == 202)
             {
-                
+                Rdata1.id = (int)receive_buffer.data()[0];
+                Rdata1.d0 = (int)receive_buffer.data()[1];
+                Rdata1.d1 = (int)receive_buffer.data()[2];
+                Rdata1.d2 = (int)receive_buffer.data()[3];
+                Rdata1.d3 = (int)receive_buffer.data()[4];
+                Rdata1.d4 = (int)receive_buffer.data()[5];
+                Rdata1.d5 = (int)receive_buffer.data()[6];
+                Rdata1.d6 = (int)receive_buffer.data()[7];
+                Rdata1.d7 = (int)receive_buffer.data()[8];
+            }else if (mID == 203)
+            {
+                Rdata2.id = (int)receive_buffer.data()[0];
+                Rdata2.d0 = (int)receive_buffer.data()[1];
+                Rdata2.d1 = (int)receive_buffer.data()[2];
+                Rdata2.d2 = (int)receive_buffer.data()[3];
+                Rdata2.d3 = (int)receive_buffer.data()[4];
+                Rdata2.d4 = (int)receive_buffer.data()[5];
+                Rdata2.d5 = (int)receive_buffer.data()[6];
+                Rdata2.d6 = (int)receive_buffer.data()[7];
+                Rdata2.d7 = (int)receive_buffer.data()[8];
             }
-            if(bEnd)
-            {
-                break;
-            }
+            
+            data_mutex.unlock();
 
             // add message to shared data structure
             std::lock_guard<std::mutex> lock(mutex);
             messages.push_back(std::string(receive_buffer.data(), receive_buffer.size()));
+            if (messages.size() > 100)
+            {
+               messages.clear();
+            }
+            
         }
     }
     catch (std::exception& e)
@@ -162,41 +203,42 @@ void receive_thread_func()
 int main(int argc, char* argv[])
 {
     
-    //std::cout << sizeof(data_frame) << std::endl;
+    data0.id = 100;
+    data0.d0 = 100;
+    data0.d1 = 101;
+    data0.d2 = 102;
+    data0.d3 = 103;
+    data0.d4 = 104;
+    data0.d5 = 105;
+    data0.d6 = 106;
+    data0.d7 = 107;
 
-    
-    ddf.id = 200;
-    ddf.d0 = 100;
-    ddf.d1 = 101;
-    ddf.d2 = 102;
-    ddf.d3 = 103;
-    ddf.d4 = 104;
-    ddf.d5 = 105;
-    ddf.d6 = 106;
-    ddf.d7 = 107;
+    data1.id = 101;
+    data1.d0 = 44;
+    data1.d1 = 44;
+    data1.d2 = 44;
+    data1.d3 = 44;
+    data1.d4 = 44;
+    data1.d5 = 44;
+    data1.d6 = 44;
+    data1.d7 = 44;
 
-    data1.id = 201;
-    data1.d0 = 250;
-    data1.d1 = 150;
-    data1.d2 = 175;
-    data1.d3 = 202;
-    data1.d4 = 208;
-    data1.d5 = 240;
-    data1.d6 = 78;
-    data1.d7 = 5;
+    data2.id = 102;
+    data2.d0 = 55;
+    data2.d1 = 55;
+    data2.d2 = 55;
+    data2.d3 = 55;
+    data2.d4 = 55;
+    data2.d5 = 55;
+    data2.d6 = 55;
+    data2.d7 = 55;
 
-
-    uint8_t* uintArray = dataFrameToUint8_tArray(&ddf,9);
+    uint8_t* uintArray = dataFrameToUint8_tArray(&data0,9);
     char* chrArray = uint8_tToCharArray(uintArray,9);
     uint8_t* returnedArray = charArrayToUint8_t(chrArray,9);
 
-
-    //std::cout << static_cast<unsigned int>(uintArray[3]) << std::endl;
-    //std::cout << chrArray[3] << std::endl;
-    //std::cout << static_cast<unsigned int>(returnedArray[3]) << std::endl;
+    std::cout << "I am the crawler." << std::endl;
     
-
-
     if(argc == 6)
     {
         name = argv[1];
@@ -214,18 +256,12 @@ int main(int argc, char* argv[])
     std::thread send_thread(send_thread_func);
     std::thread receive_thread(receive_thread_func);
     std::thread mnloop(mainloop);
+
     // wait for threads to finish
     send_thread.join();
     receive_thread.join();
     mnloop.join();
-    // print all messages in shared data structure
-    //std::lock_guard<std::mutex> lock(mutex);
-    //std::cout << "All messages:" << std::endl;
-    //for (const auto& message : messages)
-    //{
-      //  std::cout << message << std::endl;
-   // }
-
+    
     return 0;
 }
 
@@ -257,14 +293,11 @@ uint8_t *dataFrameToUint8_tArray(data_frame *df, size_t size)
     uintArray[7] = df->d6;
     uintArray[8] = df->d7;
 
-    //std::memcpy(uintArray, df, size);
     return uintArray;
 }
 
 void mainloop()
 {
-    
-
     // Command line loop to modify the data array
     while (true)
     {
@@ -276,7 +309,7 @@ void mainloop()
         {
             //std::cout << "quit " << std::endl;
             bEnd = true;
-            break;
+            return;
         }
         else if (command == "set")
         {
@@ -287,7 +320,7 @@ void mainloop()
             std::string sNewValue = "";
             unsigned int newValue;
 
-            std::cout << "data1 or data2? >>";
+            std::cout << "data0 enter 1 or data1 enter 2 or data2 enter 3? >>";
             std::cin >> index;
             std::cout << "What byte 0 - 7? >>";
             std::cin >> sValue;
@@ -300,28 +333,28 @@ void mainloop()
             {
                if (value == 0)
                {
-                ddf.d0 = newValue;
+                data0.d0 = newValue;
                }else if(value == 1)
                {
-                ddf.d1 = newValue;
+                data0.d1 = newValue;
                }else if(value == 2)
                {
-                ddf.d2 = newValue;
+                data0.d2 = newValue;
                }else if(value == 3)
                {
-                ddf.d3 = newValue;
+                data0.d3 = newValue;
                }else if(value == 4)
                {
-                ddf.d4 = newValue;
+                data0.d4 = newValue;
                }else if(value == 5)
                {
-                ddf.d5 = newValue;
+                data0.d5 = newValue;
                }else if(value == 6)
                {
-                ddf.d6 = newValue;
+                data0.d6 = newValue;
                }else if(value == 7)
                {
-                ddf.d7 = newValue;
+                data0.d7 = newValue;
                }else
                {
                 std::cout << "Invalid bit entry" << std::endl;
@@ -358,6 +391,33 @@ void mainloop()
                 {
                     data1.d7 = newValue;
                 }
+            }else if (index == 3 && newValue >=0 && newValue < 256)
+            {
+                if (value == 0)
+                {
+                    data2.d0 = newValue;
+                }else if(value == 1)
+                {
+                    data2.d1 = newValue;
+                }else if(value == 2)
+                {
+                    data2.d2 = newValue;
+                }else if(value == 3)
+                {
+                    data2.d3 = newValue;
+                }else if(value == 4)
+                {
+                    data2.d4 = newValue;
+                }else if(value == 5)
+                {
+                    data2.d5 = newValue;
+                }else if(value == 6)
+                {
+                    data2.d6 = newValue;
+                }else if(value == 7)
+                {
+                    data2.d7 = newValue;
+                }
             }else
             {
                 std::cout << "Invalid Datastructure Entry" << std::endl;
@@ -366,31 +426,27 @@ void mainloop()
                 std::cout << sNewValue << std::endl;
                 std::cout << newValue << std::endl;
             }
-            
 
-            command = "";
-          
-            //std::cout << messages[2] << std::endl;
+            command = "";            
         }
         else if (command == "get")
         {
             std::size_t index;
             std::cout << "Enter index >>";
             std::cin >> index;
-		/*
-            if (index < data.size())
-            {
-                std::cout << static_cast<int>(data[index]) << std::endl;
-            }
-            else
-            {
-                std::cerr << "Invalid index: " << index << std::endl;
-            }
-		*/
+		
             std::cout << messages[index] << std::endl;
             command = "";
             //std::cout << index << std::endl;
-        }
+        }else if (command == "size")
+        {
+            std::cout << "Vecor current size is " << messages.size() << std::endl;
+        }else if (command == "report")
+        {
+            std::cout << (int)Rdata0.id << " " << (int)Rdata0.d0 <<  " " << (int)Rdata0.d1 << " " << (int)Rdata0.d2 << " " << (int)Rdata0.d3 << " " << (int)Rdata0.d4 << " " << (int)Rdata0.d5 << " " << (int)Rdata0.d6 << " " << (int)Rdata0.d7 << std::endl;
+            std::cout << (int)Rdata1.id << " " << (int)Rdata1.d0 <<  " " << (int)Rdata1.d1 << " " << (int)Rdata1.d2 << " " << (int)Rdata1.d3 << " " << (int)Rdata1.d4 << " " << (int)Rdata1.d5 << " " << (int)Rdata1.d6 << " " << (int)Rdata1.d7 << std::endl;
+            std::cout << (int)Rdata2.id << " " << (int)Rdata2.d0 <<  " " << (int)Rdata2.d1 << " " << (int)Rdata2.d2 << " " << (int)Rdata2.d3 << " " << (int)Rdata2.d4 << " " << (int)Rdata2.d5 << " " << (int)Rdata2.d6 << " " << (int)Rdata2.d7 << std::endl;
+        }   
         else
         {
             std::cerr << "Invalid command: " << command << std::endl;
@@ -398,8 +454,6 @@ void mainloop()
         }
     }
     return;
-    // Stop the IO context and
-
 }
 
 
