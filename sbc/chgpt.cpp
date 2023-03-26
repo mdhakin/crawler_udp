@@ -49,6 +49,53 @@ uint8_t* charArrayToUint8_t(char* charArray, size_t size);
 uint8_t* dataFrameToUint8_tArray(data_frame* df, size_t size);
 void mainloop();
 
+
+
+/*
+uint16_t inpt = 6805;
+    uint8_t hi = 0;
+    uint8_t lo = 0;
+    uint8_t* phi = &hi;
+    uint8_t* plo = &lo;
+    split_16(inpt, phi, plo);
+    cout << (int)hi << endl;
+    cout << (int)lo << endl;
+    uint16_t recom = recombine2_8s(hi, lo);
+    cout << dec << int(recom) << endl;
+*/
+void split_16(uint16_t num16, uint8_t *num8_high, uint8_t *num8_low);
+uint16_t recombine2_8s(uint8_t num8_high, uint8_t num8_low);
+
+
+
+
+
+/*
+int main() {
+    unsigned char byte = 0b01010101; // Example byte
+
+    // Set the 2nd bit (from the right) to 1
+    set_bit(byte, 1, true);
+    std::cout << "After setting 2nd bit: " << std::bitset<8>(byte) << std::endl;
+
+    // Set the 4th bit (from the right) to 0
+    set_bit(byte, 3, false);
+    std::cout << "After setting 4th bit: " << std::bitset<8>(byte) << std::endl;
+
+    // Get the value of the 2nd bit (from the right)
+    bool bitValue = get_bit(byte, 1);
+    std::cout << "Value of 2nd bit: " << bitValue << std::endl;
+
+    // Get the value of the 4th bit (from the right)
+    bitValue = get_bit(byte, 3);
+    std::cout << "Value of 4th bit: " << bitValue << std::endl;
+
+    return 0;
+}
+*/
+void set_bit(unsigned char &byte, int position, bool value);
+bool get_bit(const unsigned char &byte, int position);
+
 void send_thread_func()
 {
     try
@@ -456,8 +503,34 @@ void mainloop()
     return;
 }
 
+void split_16(uint16_t num16, uint8_t *num8_high, uint8_t *num8_low)
+{
+    *num8_high = (num16 >> 8) & 0xFF; // get the high 8 bits
+    *num8_low = num16 & 0xFF; // get the low 8 bits
+}
 
 
+uint16_t recombine2_8s(uint8_t num8_high, uint8_t num8_low)
+{
+    uint16_t num16_2 = (num8_high << 8) | num8_low; // combine the two 8-bit numbers
+    return num16_2;
+}
+
+// Function to set a specific bit in a byte
+void set_bit(unsigned char &byte, int position, bool value) 
+{
+    if (value) {
+        byte |= (1 << position); // Set the bit at position to 1
+    } else {
+        byte &= ~(1 << position); // Set the bit at position to 0
+    }
+}
+
+// Function to get the value of a specific bit in a byte
+bool get_bit(const unsigned char &byte, int position) 
+{
+    return (byte & (1 << position)) != 0;
+}
 
 
 
